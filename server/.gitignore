@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# User uploads (resumes etc.)
+uploads/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
