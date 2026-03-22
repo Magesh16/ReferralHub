@@ -119,7 +119,7 @@ export default function Login() {
                                     style={{
                                         width: '100%', padding: '11px 14px 11px 38px',
                                         border: '1.5px solid var(--border-color)', borderRadius: 10,
-                                        background: '#FFFFFF', color: 'var(--text-primary)',
+                                        background: '#FFFFFF', color: 'grey',
                                         fontSize: 14, fontFamily: 'inherit', outline: 'none',
                                         transition: 'border-color 0.15s, box-shadow 0.15s',
                                     }}
@@ -144,7 +144,7 @@ export default function Login() {
                                     style={{
                                         width: '100%', padding: '11px 44px 11px 38px',
                                         border: '1.5px solid var(--border-color)', borderRadius: 10,
-                                        background: '#FFFFFF', color: 'var(--text-primary)',
+                                        background: '#FFFFFF', color: 'grey',
                                         fontSize: 14, fontFamily: 'inherit', outline: 'none',
                                         transition: 'border-color 0.15s, box-shadow 0.15s',
                                     }}
@@ -214,7 +214,7 @@ export default function Login() {
                                         transition: 'border-color 0.12s, background 0.12s',
                                         fontFamily: 'inherit',
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = '#FFFFFF'; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary)'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-base)'; }}
                                 >
                                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>

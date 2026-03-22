@@ -64,7 +64,7 @@ export default function Register() {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                         {['employee', 'seeker'].map((r) => (
                                             <button key={r} type="button" onClick={() => set('role', r)}
-                                                style={{ padding: '14px 10px', borderRadius: 'var(--radius-md)', border: `2px solid ${form.role === r ? 'var(--color-primary)' : 'var(--border-color)'}`, background: form.role === r ? 'var(--color-primary-glow)' : 'transparent', cursor: 'pointer', fontWeight: 600, textTransform: 'capitalize', fontSize: 14, transition: 'all 0.2s' }}>
+                                                style={{ padding: '14px 10px', borderRadius: 'var(--radius-md)', border: `2px solid ${form.role === r ? 'var(--color-primary)' : 'var(--border-color)'}`, background: form.role === r ? 'var(--color-primary-glow)' : 'transparent', cursor: 'pointer', fontWeight: 600, textTransform: 'capitalize', fontSize: 14, transition: 'all 0.2s', color: "var(--text-secondary)" }}>
                                                 {r === 'employee' ? '🏢 Employee' : '👤 Job Seeker'}
                                             </button>
                                         ))}
