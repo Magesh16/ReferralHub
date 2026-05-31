@@ -7,6 +7,7 @@ const {
   notifyBookingConfirmed,
   notifyReferralSubmitted,
 } = require('../services/notification.service');
+const { createCalendarEvent, deleteCalendarEvent } = require('../services/calendar.service');
 
 /**
  * POST /api/appointments
@@ -144,7 +145,9 @@ const getAppointmentById = async (req, res, next) => {
 const updateAppointmentStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const appointment = await Appointment.findById(req.params.id);
+    const appointment = await Appointment.findById(req.params.id)
+      .populate('seeker', 'name email')
+      .populate('employee', 'name email');
 
     if (!appointment) {
       return errorResponse(res, 'Appointment not found', 404);
@@ -154,26 +157,84 @@ const updateAppointmentStatus = async (req, res, next) => {
 
     // Employee can confirm or reject
     if (['confirmed', 'rejected'].includes(status)) {
-      if (appointment.employee.toString() !== userId) {
+      if (appointment.employee._id.toString() !== userId) {
         return errorResponse(res, 'Only the referral provider can confirm/reject', 403);
       }
     }
 
     // Seeker can cancel
     if (status === 'cancelled') {
-      if (appointment.seeker.toString() !== userId) {
+      if (appointment.seeker._id.toString() !== userId) {
         return errorResponse(res, 'Only the seeker can cancel', 403);
       }
     }
 
     appointment.status = status;
+
+    // ── Google Calendar: create event on confirm ──
+    if (status === 'confirmed') {
+      try {
+        const employeeWithTokens = await User.findById(appointment.employee._id)
+          .select('+googleAccessToken +googleRefreshToken +googleCalendarConnected');
+
+        if (employeeWithTokens?.googleCalendarConnected && employeeWithTokens?.googleRefreshToken) {
+          const referral = await ReferralPost.findById(appointment.referralPost);
+          const { eventId, meetLink } = await createCalendarEvent(
+            {
+              accessToken: employeeWithTokens.googleAccessToken,
+              refreshToken: employeeWithTokens.googleRefreshToken,
+            },
+            {
+              employeeName: appointment.employee.name,
+              employeeEmail: appointment.employee.email,
+              seekerName: appointment.seeker.name,
+              seekerEmail: appointment.seeker.email,
+              role: referral?.role || 'Interview',
+              company: referral?.company || employeeWithTokens.company,
+              scheduledDate: appointment.scheduledDate.toISOString().split('T')[0],
+              scheduledTime: appointment.scheduledTime,
+            }
+          );
+          appointment.googleEventId = eventId;
+          appointment.meetLink = meetLink;
+          appointment.calendarSynced = true;
+          console.log(`✅ Calendar event created: ${eventId} | Meet: ${meetLink}`);
+        } else {
+          console.info('ℹ️  Employee has not connected Google Calendar — skipping event creation.');
+        }
+      } catch (calErr) {
+        // Graceful degradation — don't fail the confirmation
+        console.error('❌  Calendar event creation failed:', calErr.message);
+      }
+    }
+
+    // ── Google Calendar: delete event on cancellation ──
+    if (status === 'cancelled' && appointment.googleEventId) {
+      try {
+        const employeeWithTokens = await User.findById(appointment.employee._id)
+          .select('+googleAccessToken +googleRefreshToken');
+        if (employeeWithTokens?.googleRefreshToken) {
+          await deleteCalendarEvent(
+            {
+              accessToken: employeeWithTokens.googleAccessToken,
+              refreshToken: employeeWithTokens.googleRefreshToken,
+            },
+            appointment.googleEventId
+          );
+          appointment.calendarSynced = false;
+          console.log(`🗑️  Calendar event deleted: ${appointment.googleEventId}`);
+        }
+      } catch (calErr) {
+        console.error('❌  Calendar event deletion failed:', calErr.message);
+      }
+    }
+
     await appointment.save();
 
     // Notifications
     if (status === 'confirmed') {
-      const employee = await User.findById(appointment.employee);
       const referral = await ReferralPost.findById(appointment.referralPost);
-      await notifyBookingConfirmed(appointment.seeker, employee.name, referral.role);
+      await notifyBookingConfirmed(appointment.seeker._id, appointment.employee.name, referral?.role);
     }
 
     return successResponse(res, appointment, `Appointment ${status}`);

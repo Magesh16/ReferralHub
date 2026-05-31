@@ -54,6 +54,11 @@ const userSchema = new mongoose.Schema(
 
     // ── Auth ──
     refreshToken: { type: String, select: false },
+
+    // ── Google Calendar OAuth (employee only) ──
+    googleAccessToken: { type: String, select: false, default: null },
+    googleRefreshToken: { type: String, select: false, default: null },
+    googleCalendarConnected: { type: Boolean, default: false },
   },
   {
     timestamps: true,

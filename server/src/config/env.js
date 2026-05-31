@@ -9,4 +9,9 @@ module.exports = {
   jwtRefreshExpire: process.env.JWT_REFRESH_EXPIRE || '7d',
   platformFeePercent: parseFloat(process.env.PLATFORM_FEE_PERCENT) || 15,
   baseReferralPrice: parseFloat(process.env.BASE_REFERRAL_PRICE) || 500,
+  // ── Google OAuth ──
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 };

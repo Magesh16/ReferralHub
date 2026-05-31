@@ -14,6 +14,7 @@ const paymentRoutes = require('./routes/payment.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const resumeMatchRoutes = require('./routes/resumeMatch.routes');
+const calendarRoutes = require('./routes/calendar.routes');
 
 const app = express();
 
@@ -22,11 +23,19 @@ const app = express();
 //   origin: ['http://localhost:5173', 'http://localhost:3000', 'https://referralhub-client.onrender.com/'],
 //   credentials: true,
 // }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://referralhub-client.onrender.com',
+];
 app.use(cors({
-  origin: "https://referralhub-client.onrender.com",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -47,6 +56,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/resume-match', resumeMatchRoutes);
+app.use('/api/calendar', calendarRoutes);
+// Google OAuth callback lives at /api/auth/google/callback
+app.use('/api/auth', calendarRoutes);
 
 // ── 404 handler ──
 app.use((req, res) => {

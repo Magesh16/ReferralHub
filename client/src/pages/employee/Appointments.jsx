@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { Spinner, EmptyState, StatusBadge } from '../../components/ui/index.jsx';
+import { Spinner, EmptyState } from '../../components/ui/index.jsx';
 import AppointmentCard from '../../components/AppointmentCard.jsx';
-import { formatDate } from '../../utils/formatters';
+import { RiCalendar2Line, RiVideoLine } from 'react-icons/ri';
 
 export default function EmployeeAppointments() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
+    const [updating, setUpdating] = useState(null);
 
     const load = async () => {
         setLoading(true);
@@ -23,11 +24,22 @@ export default function EmployeeAppointments() {
     useEffect(() => { load(); }, [filter]);
 
     const updateStatus = async (id, status) => {
+        setUpdating(id);
         try {
-            await api.patch(`/appointments/${id}/status`, { status });
+            const { data } = await api.patch(`/appointments/${id}/status`, { status });
+            const updated = data.data;
+            if (status === 'confirmed') {
+                if (updated?.meetLink) {
+                    toast.success('✅ Confirmed! Google Meet link created & invite sent 🗓️', { duration: 5000 });
+                } else {
+                    toast.success('✅ Appointment confirmed! (Connect Google Calendar in Profile to auto-create Meet links)');
+                }
+            } else {
+                toast.success(`Appointment ${status}`);
+            }
             load();
-            toast.success(`Appointment ${status}`);
-        } catch { toast.error('Update failed'); }
+        } catch (err) { toast.error(err.response?.data?.message || 'Update failed'); }
+        finally { setUpdating(null); }
     };
 
     return (
@@ -45,16 +57,34 @@ export default function EmployeeAppointments() {
                             {appointments.map((a) => (
                                 <div key={a._id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     <AppointmentCard appointment={a} />
-                                    {a.resumeUrl && (
-                                        <div style={{ display: 'flex', gap: 10 }}>
-                                            <a href={`http://localhost:8080${a.resumeUrl}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">📎 View Resume</a>
+
+                                    {/* Google Meet link */}
+                                    {a.meetLink && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', borderRadius: 'var(--radius-md)' }}>
+                                            <RiCalendar2Line style={{ color: 'var(--color-success)', fontSize: 18, flexShrink: 0 }} />
+                                            <p style={{ fontSize: 13, flex: 1 }}>
+                                                <span style={{ fontWeight: 600 }}>Google Meet scheduled</span>
+                                                <span style={{ color: 'var(--text-secondary)', marginLeft: 6, fontSize: 12 }}>Invite sent to both participants</span>
+                                            </p>
+                                            <a href={a.meetLink} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                <RiVideoLine /> Join Meet
+                                            </a>
                                         </div>
                                     )}
+
+                                    {/* Resume & cover note */}
+                                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                        {a.resumeUrl && <a href={`http://localhost:8080${a.resumeUrl}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">📎 View Resume</a>}
+                                    </div>
                                     {a.coverNote && <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>"{a.coverNote}"</p>}
+
+                                    {/* Action buttons */}
                                     {a.status === 'pending' && (
                                         <div style={{ display: 'flex', gap: 8 }}>
-                                            <button className="btn btn-primary btn-sm" onClick={() => updateStatus(a._id, 'confirmed')}>✅ Confirm</button>
-                                            <button className="btn btn-danger btn-sm" onClick={() => updateStatus(a._id, 'rejected')}>❌ Reject</button>
+                                            <button className="btn btn-primary btn-sm" disabled={updating === a._id} onClick={() => updateStatus(a._id, 'confirmed')}>
+                                                {updating === a._id ? '…' : '✅ Confirm & Create Meet'}
+                                            </button>
+                                            <button className="btn btn-danger btn-sm" disabled={updating === a._id} onClick={() => updateStatus(a._id, 'rejected')}>❌ Reject</button>
                                         </div>
                                     )}
                                     {a.status === 'confirmed' && (
@@ -70,3 +100,4 @@ export default function EmployeeAppointments() {
         </div>
     );
 }
+

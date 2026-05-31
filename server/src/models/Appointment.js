@@ -44,6 +44,11 @@ const appointmentSchema = new mongoose.Schema(
     missingSkills: [{ type: String }],
 
     amount: { type: Number, required: true },
+
+    // ── Google Calendar ──
+    googleEventId: { type: String, default: null },
+    meetLink: { type: String, default: null },
+    calendarSynced: { type: Boolean, default: false },
   },
   {
     timestamps: true,

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Spinner } from '../components/ui/index.jsx';
 import { getInitials } from '../utils/formatters';
-import { RiUserLine, RiBuildingLine, RiLinkedinFill, RiFileLine, RiUploadLine, RiCheckLine, RiLockLine, RiCloseLine, RiAddLine, RiEyeLine, RiEyeOffLine } from 'react-icons/ri';
+import { RiUserLine, RiBuildingLine, RiLinkedinFill, RiFileLine, RiUploadLine, RiCheckLine, RiLockLine, RiCloseLine, RiAddLine, RiEyeLine, RiEyeOffLine, RiCalendar2Line, RiGoogleLine, RiLinkUnlinkM } from 'react-icons/ri';
 
 function Section({ icon, title, children }) {
     return (
@@ -52,12 +53,54 @@ export default function Profile() {
     const [uploading, setUploading] = useState(false);
     const [resumeUrl, setResumeUrl] = useState('');
     const [hasExtractedText, setHasExtractedText] = useState(false);
+    // Google Calendar state (employee only)
+    const [calConnected, setCalConnected] = useState(false);
+    const [calLoading, setCalLoading] = useState(false);
+    const [calConnecting, setCalConnecting] = useState(false);
+    const location = useLocation();
 
     useEffect(() => {
         if (!user) return;
         setForm({ name: user.name || '', phone: user.phone || '', linkedinUrl: user.linkedinUrl || '', company: user.company || '', jobTitle: user.jobTitle || '', department: user.department || '', yearsAtCompany: user.yearsAtCompany || '', skills: user.skills || [], experienceYears: user.experienceYears || '', currentRole: user.currentRole || '' });
         if (user.resume) setResumeUrl(user.resume);
+        // Load Google Calendar status for employees
+        if (user.role === 'employee') {
+            setCalLoading(true);
+            api.get('/calendar/status').then(({ data }) => setCalConnected(data.data?.connected || false)).catch(() => {}).finally(() => setCalLoading(false));
+        }
     }, [user]);
+
+    // Handle OAuth redirect query params
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('calendarConnected') === 'true') {
+            setCalConnected(true);
+            toast.success('✅ Google Calendar connected successfully!');
+        } else if (params.get('calendarError')) {
+            toast.error('❌ Failed to connect Google Calendar. Please try again.');
+        }
+    }, [location.search]);
+
+    const connectGoogleCalendar = async () => {
+        setCalConnecting(true);
+        try {
+            const { data } = await api.get('/calendar/auth-url');
+            window.location.href = data.data.url; // redirect to Google consent screen
+        } catch (err) {
+            toast.error('Could not get Google auth URL');
+            setCalConnecting(false);
+        }
+    };
+
+    const disconnectGoogleCalendar = async () => {
+        try {
+            await api.delete('/calendar/disconnect');
+            setCalConnected(false);
+            toast.success('Google Calendar disconnected');
+        } catch {
+            toast.error('Failed to disconnect');
+        }
+    };
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -179,6 +222,45 @@ export default function Profile() {
                         </div>
                         <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
                         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10 }}>💡 PDF upload unlocks AI-powered matching on the <strong>Best Matches</strong> page.</p>
+                    </Section>
+                )}
+
+                {/* ── Google Calendar (employee only) ── */}
+                {!isSeeker && (
+                    <Section icon={<RiCalendar2Line />} title="Google Calendar">
+                        {calLoading ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Spinner size="sm" /><span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Checking connection…</span></div>
+                        ) : calConnected ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', borderRadius: 'var(--radius-md)' }}>
+                                    <span style={{ fontSize: 22 }}>🗓️</span>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontWeight: 700, fontSize: 14 }}>Google Calendar Connected ✅</p>
+                                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Calendar events with Google Meet links will be created automatically when you confirm appointments.</p>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={disconnectGoogleCalendar} style={{ color: 'var(--color-error)' }}>
+                                        <RiLinkUnlinkM /> Disconnect Google Calendar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--bg-surface-2)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                                    <span style={{ fontSize: 22 }}>📅</span>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontWeight: 700, fontSize: 14 }}>Connect Google Calendar</p>
+                                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Automatically create Google Calendar events with Meet links when you confirm appointments.</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={connectGoogleCalendar} disabled={calConnecting} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <RiGoogleLine />{calConnecting ? 'Redirecting…' : 'Connect Google Calendar'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </Section>
                 )}
 
