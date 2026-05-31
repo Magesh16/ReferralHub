@@ -27,6 +27,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://referralhub-client.onrender.com',
+  'https://referralhub-client-static.onrender.com'
 ];
 app.use(cors({
   origin: (origin, callback) => {
